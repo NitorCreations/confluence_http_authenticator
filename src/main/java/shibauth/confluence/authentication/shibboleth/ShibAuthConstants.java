@@ -93,6 +93,16 @@ public class ShibAuthConstants {
     public final static String EMAIL_HEADER_STRATEGY_PROPERTY = "header.email.strategy";
 
     /**
+     * Name of phone address header property
+     */
+    public final static String PHONE_HEADER_NAME_PROPERTY = "header.phone";
+
+    /**
+     * Strategy option to use to get phone
+     */
+    public final static String PHONE_HEADER_STRATEGY_PROPERTY = "header.phone.strategy";
+
+    /**
      * Name of full name header property
      */
     public final static String FULLNAME_HEADER_NAME_PROPERTY = "header.fullname";

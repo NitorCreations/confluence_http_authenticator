@@ -145,6 +145,21 @@ public class ShibAuthConfiguration {
     private int emailHeaderStrategy;
 
     /**
+     * HTTP Header or request attribute name that contains a user's phone number
+     */
+    private String phoneHeaderName;
+
+    /**
+     * Strategy option to use to get phone. Default is 0:
+     * <ul>
+     * <li>0 - Try request.getAttribute then request.getHeader</li>
+     * <li>1 - Use request.getAttribute</li>
+     * <li>2 - Use request.getHeader</li>
+     * </ul>
+     */
+    private int phoneHeaderStrategy;
+
+    /**
      * HTTP Header or request attribute name that contains a user's full name
      */
     private String fullNameHeaderName;
@@ -408,6 +423,22 @@ public class ShibAuthConfiguration {
 
     public void setEmailHeaderStrategy(int emailHeaderStrategy) {
         this.emailHeaderStrategy = emailHeaderStrategy;
+    }
+
+    public String getPhoneHeaderName() {
+        return phoneHeaderName;
+    }
+
+    public void setPhoneHeaderName(String phoneHeaderName) {
+        this.phoneHeaderName = phoneHeaderName;
+    }
+
+    public int getPhoneHeaderStrategy() {
+        return phoneHeaderStrategy;
+    }
+
+    public void setPhoneHeaderStrategy(int phoneHeaderStrategy) {
+        this.phoneHeaderStrategy = phoneHeaderStrategy;
     }
 
     public String getFullNameHeaderName() {

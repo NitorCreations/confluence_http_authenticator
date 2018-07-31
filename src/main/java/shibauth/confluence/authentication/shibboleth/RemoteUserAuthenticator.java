@@ -44,9 +44,11 @@ package shibauth.confluence.authentication.shibboleth;
 import bucket.user.LicensingException;
 import com.atlassian.confluence.event.events.security.LoginEvent;
 import com.atlassian.confluence.event.events.security.LoginFailedEvent;
+import com.atlassian.confluence.impl.audit.listener.UserManagementAuditListener;
 import com.atlassian.confluence.security.login.LoginManager;
 import com.atlassian.confluence.user.ConfluenceAuthenticator;
 import com.atlassian.confluence.user.UserAccessor;
+import com.atlassian.confluence.user.UserDetailsManager;
 import com.atlassian.crowd.embedded.api.CrowdService;
 import com.atlassian.crowd.embedded.api.Group;
 import com.atlassian.crowd.embedded.api.User;
@@ -298,13 +300,13 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
      * @param username user name for the new user
      * @return the new user
      */
-    private void createUser(String username, String fullName, String emailAddress) {
+    private void createUser(String username, String fullName, String emailAddress, String phoneNumber) {
         if (log.isInfoEnabled()) {
             log.info("Creating user account for " + username);
         }
 
         try {
-            createUser(getUserAccessor(), username, fullName, emailAddress);
+            createUser(getUserAccessor(), username, fullName, emailAddress, phoneNumber);
         } catch (Throwable t) {
             // Note: just catching EntityException like we used to do didn't
             // seem to cover Confluence massive with Oracle
@@ -315,7 +317,7 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
         }
     }
 
-    private void updateUser(User user, String fullName, String emailAddress) {
+    private void updateUser(User user, String fullName, String emailAddress, String phoneNumber) {
         // If we have new values for name or email, update the user object
         if (user == null) {
             if (log.isDebugEnabled()) {
@@ -323,7 +325,6 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
             }
         } else {
             boolean updated = false;
-
             CrowdService crowdService = getCrowdService();
             if (crowdService == null) {
                 throw new RuntimeException("crowdService was not wired in RemoteUserAuthenticator");
@@ -368,6 +369,15 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
                     updateUser(crowdService, userBuilder.toUser());
                 } catch (Throwable t) {
                     log.error("Couldn't update user " + user.getName(), t);
+                }
+            }
+            if (phoneNumber != null) {
+                UserAccessor userAccessor = getUserAccessor();
+                UserDetailsManager userDetailsManager = getUserDetailsManager();
+                com.atlassian.user.User cUser = userAccessor.getUserByName(user.getName()); 
+                String oldNumber = userDetailsManager.getStringProperty(cUser, "phone");
+                if (!phoneNumber.equals(oldNumber)) {
+                    userDetailsManager.setStringProperty(cUser, "phone", phoneNumber);
                 }
             }
         }
@@ -459,6 +469,26 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
         }
 
         return emailAddress;
+    }
+
+    private String getPhoneNumber(HttpServletRequest request) {
+        String phoneNumber = null;
+        if (config.getPhoneHeaderName() != null) {
+            String headerValue = getAttribute(request, config.getPhoneHeaderName(), config.getPhoneHeaderStrategy());
+            List values = StringUtil.
+                    toListOfNonEmptyStringsDelimitedByCommaOrSemicolon(headerValue);
+
+            if (values != null && values.size() > 0) {
+                // Use the first email in the list.
+                phoneNumber = (String) values.get(0);
+
+                if (log.isDebugEnabled()) {
+                    log.debug("Got phoneNumber '" + phoneNumber + "' for header '" + config.getPhoneHeaderName() +
+                            "'");
+                }
+            }
+        }
+        return phoneNumber;
     }
 
     private String getFullName(HttpServletRequest request, String userid) {
@@ -745,7 +775,7 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
         // Pull name and address from headers
         String fullName = getFullName(request, userid);
         String emailAddress = getEmailAddress(request);
-
+        String phoneNumber = getPhoneNumber(request);
         // Try to get the user's account based on the user name
         Principal user = getUser(userid);
         boolean newUser = false;
@@ -754,7 +784,7 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
         // again.
         if (user == null) {
             if (config.isCreateUsers()) {
-                createUser(userid, fullName, emailAddress);
+                createUser(userid, fullName, emailAddress, phoneNumber);
                 newUser = true;
             } else {
                 if (log.isDebugEnabled()) {
@@ -774,7 +804,7 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
             user = getUser(userid);
             if (user != null) {
                 // update the first time even if update not set, because we need to set full name and email
-                updateUser(crowdUser, fullName, emailAddress);
+                updateUser(crowdUser, fullName, emailAddress, phoneNumber);
             } else {
                 // this could be a warning rather than debug, but in certain environments it might happen more often.
                 if (log.isDebugEnabled()) {
@@ -783,7 +813,7 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
             }
         } else {
             if (config.isUpdateInfo()) {
-                updateUser(crowdUser, fullName, emailAddress);
+                updateUser(crowdUser, fullName, emailAddress, phoneNumber);
             }
         }
 
@@ -956,6 +986,7 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
         // Pull name and address from headers
         String fullName = getFullName(request, userid);
         String emailAddress = getEmailAddress(request);
+        String phoneNumber = getPhoneNumber(request);
 
         // Try to get the user's account based on the user name
         Principal user = getUser(userid);
@@ -966,7 +997,7 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
         // if we can, otherwise will try to get it again.
         if (user == null) {
             if (config.isCreateUsers()) {
-                createUser(userid, fullName, emailAddress);
+                createUser(userid, fullName, emailAddress, phoneNumber);
                 newUser = true;
             } else {
                 if (log.isDebugEnabled()) {
@@ -990,7 +1021,7 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
 
             if (user != null) {
                 // update the first time even if update not set, because we need to set full name and email
-                updateUser(crowdUser, fullName, emailAddress);
+                updateUser(crowdUser, fullName, emailAddress, phoneNumber);
             } else {
                 // If user is still null, probably we're using an
                 // external user database like LDAP. Either REMOTE_USER
@@ -1013,7 +1044,7 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
                 return null;
             }
             if (config.isUpdateInfo()) {
-                updateUser(crowdUser, fullName, emailAddress);
+                updateUser(crowdUser, fullName, emailAddress, phoneNumber);
             }
         }
 
@@ -1233,7 +1264,7 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
     // avoid "Write operations are not allowed in read-only mode" per Joseph Clark of Atlassian in
     // https://answers.atlassian.com/questions/25160/crowdservice-updateuser-causes-write-operations-are-not-allowed-in-read-only-mode
     // https://developer.atlassian.com/display/CONFDEV/Hibernate+Sessions+and+Transaction+Management+Guidelines
-    private void createUser(final UserAccessor userAccessor, final String username, final String fullName, final String emailAddress) {
+    private void createUser(final UserAccessor userAccessor, final String username, final String fullName, final String emailAddress, String phoneNumber) {
         if (username != null) {
             new TransactionTemplate(getTransactionManager(), new DefaultTransactionAttribute(TransactionDefinition.PROPAGATION_REQUIRED)).execute(new TransactionCallback() {
                 public Object doInTransaction(TransactionStatus status) {
@@ -1318,6 +1349,10 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
 
     public LoginManager getLoginManager() {
         return (LoginManager) ContainerManager.getComponent("loginManager");
+    }
+
+    public UserDetailsManager getUserDetailsManager() {
+        return (UserDetailsManager) ContainerManager.getComponent("userDetailsManager");
     }
 
     public PlatformTransactionManager getTransactionManager() {

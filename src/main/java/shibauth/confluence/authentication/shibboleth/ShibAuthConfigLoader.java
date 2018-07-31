@@ -200,7 +200,7 @@ public class ShibAuthConfigLoader {
                 log.debug("Full name header strategy set to: " + config.getFullNameHeaderStrategy());
             }
 
-            config.setEmailHeaderName(configProps.getProperty(ShibAuthConstants.EMAIL_HEADER_NAME_PROPERTY, "CONF_EMAIL"));
+            config.setPhoneHeaderName(configProps.getProperty(ShibAuthConstants.EMAIL_HEADER_NAME_PROPERTY, "CONF_EMAIL"));
 
             if (log.isDebugEnabled()) {
                 log.debug("HTTP Header/attribute that may contain user's email address set to: " + config.getEmailHeaderName());
@@ -210,6 +210,18 @@ public class ShibAuthConfigLoader {
 
             if (log.isDebugEnabled()) {
                 log.debug("Email header strategy set to: " + config.getEmailHeaderStrategy());
+            }
+
+            config.setPhoneHeaderName(configProps.getProperty(ShibAuthConstants.PHONE_HEADER_NAME_PROPERTY, "CONF_PHONE"));
+
+            if (log.isDebugEnabled()) {
+                log.debug("HTTP Header/attribute that may contain user's phone number set to: " + config.getPhoneHeaderName());
+            }
+
+            config.setPhoneHeaderStrategy(Integer.parseInt(configProps.getProperty(ShibAuthConstants.PHONE_HEADER_STRATEGY_PROPERTY, "0")));
+
+            if (log.isDebugEnabled()) {
+                log.debug("Phone header strategy set to: " + config.getPhoneHeaderStrategy());
             }
 
             config.setUsernameConvertCase(Boolean.valueOf(
