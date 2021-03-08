@@ -393,8 +393,17 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
             List values = StringUtil.toListOfNonEmptyStringsDelimitedByCommaOrSemicolon(headerValue);
 
             if (values != null && values.size() > 0) {
-                // use the first in the list, if header is defined multiple times. Otherwise should call getHeaders().
+                // use the first in the list as default and fallback, if header is defined multiple times. Otherwise should call getHeaders().
                 remoteUser = (String) values.get(0);
+
+                if (config.getUsernameFilterStrategy() == 1) {
+                    List attributes = StringUtil.getLDAPRegexAttributeList(values, config.getUsernameRegexFilter());
+
+                    if (attributes != null && attributes.size() > 0) {
+                        // use the first attribute in the header, if attribute is defined multiple times.
+                        remoteUser = (String) attributes.get(0);
+                    }
+                }
 
                 if (log.isDebugEnabled()) {
                     log.debug("Got remoteUser '" + remoteUser + "' for header '" + config.getRemoteUserHeaderName() +
@@ -412,7 +421,6 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
                     }
                 }
             }
-
         } else {
             remoteUser = unwrapRequestIfNeeded(request).getRemoteUser();
         }
@@ -1363,3 +1371,4 @@ public class RemoteUserAuthenticator extends ConfluenceAuthenticator {
         return (GroupManager) ContainerManager.getComponent("groupManager");
     }
 }
+
