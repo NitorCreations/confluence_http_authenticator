@@ -212,7 +212,7 @@ public class ShibAuthConfigLoader {
                 log.debug("Full name header strategy set to: " + config.getFullNameHeaderStrategy());
             }
 
-            config.setPhoneHeaderName(configProps.getProperty(ShibAuthConstants.EMAIL_HEADER_NAME_PROPERTY, "CONF_EMAIL"));
+            config.setEmailHeaderName(configProps.getProperty(ShibAuthConstants.EMAIL_HEADER_NAME_PROPERTY, "CONF_EMAIL"));
 
             if (log.isDebugEnabled()) {
                 log.debug("HTTP Header/attribute that may contain user's email address set to: " + config.getEmailHeaderName());
